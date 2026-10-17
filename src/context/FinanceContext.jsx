@@ -19,9 +19,12 @@ const FinanceContext = createContext(null);
 export const FinanceProvider = ({ children }) => {
   const { user } = useAuth();
 
-  const [transactions, setTransactions] = useState([]);
-  const [budgets, setBudgets] = useState([]);
-  const [settings, setSettings] = useState({ currency: 'INR', theme: 'light' });
+  // Initialize synchronously with user's persisted data if available
+  const [transactions, setTransactions] = useState(() => (user?.id ? getTransactions(user.id) : []));
+  const [budgets, setBudgets] = useState(() => (user?.id ? getBudgets(user.id) : []));
+  const [settings, setSettings] = useState(() =>
+    user?.id ? getUserSettings(user.id) : { currency: 'INR', theme: 'light' }
+  );
   const [toasts, setToasts] = useState([]);
 
   // Toast notification system
@@ -37,7 +40,7 @@ export const FinanceProvider = ({ children }) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  // Synchronize state whenever logged in user changes
+  // Synchronize state whenever user session changes (login, logout, switch user)
   useEffect(() => {
     if (user && user.id) {
       const userTxns = getTransactions(user.id);
@@ -48,26 +51,29 @@ export const FinanceProvider = ({ children }) => {
       setBudgets(userBudgets);
       setSettings(userSettings);
 
-      // Apply theme to document element
-      document.documentElement.setAttribute('data-theme', userSettings.theme || 'light');
+      if (typeof document !== 'undefined') {
+        document.documentElement.setAttribute('data-theme', userSettings.theme || 'light');
+      }
     } else {
       setTransactions([]);
       setBudgets([]);
       setSettings({ currency: 'INR', theme: 'light' });
-      document.documentElement.setAttribute('data-theme', 'light');
+      if (typeof document !== 'undefined') {
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
     }
   }, [user]);
 
   // Overall financial calculations (across all records)
   const totalIncome = useMemo(() => {
     return transactions
-      .filter((t) => t.type === 'income')
+      .filter((t) => t && t.type === 'income')
       .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
   }, [transactions]);
 
   const totalExpenses = useMemo(() => {
     return transactions
-      .filter((t) => t.type === 'expense')
+      .filter((t) => t && t.type === 'expense')
       .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
   }, [transactions]);
 
@@ -80,39 +86,39 @@ export const FinanceProvider = ({ children }) => {
   }, [currentBalance]);
 
   // Transaction CRUD handlers
-  const addTxn = (data) => {
-    if (!user) return;
+  const addTxn = useCallback((data) => {
+    if (!user || !user.id) return null;
     const created = storageAddTxn(user.id, data);
     setTransactions((prev) => [created, ...prev]);
     addToast('Transaction recorded successfully!', 'success');
     return created;
-  };
+  }, [user, addToast]);
 
-  const editTxn = (txnId, updates) => {
-    if (!user) return;
+  const editTxn = useCallback((txnId, updates) => {
+    if (!user || !user.id) return null;
     const updated = storageUpdateTxn(user.id, txnId, updates);
     setTransactions((prev) => prev.map((t) => (t.id === txnId ? updated : t)));
     addToast('Transaction updated successfully!', 'success');
     return updated;
-  };
+  }, [user, addToast]);
 
-  const removeTxn = (txnId) => {
-    if (!user) return;
+  const removeTxn = useCallback((txnId) => {
+    if (!user || !user.id) return;
     storageDeleteTxn(user.id, txnId);
     setTransactions((prev) => prev.filter((t) => t.id !== txnId));
     addToast('Transaction deleted.', 'info');
-  };
+  }, [user, addToast]);
 
-  const clearAllTxns = () => {
-    if (!user) return;
+  const clearAllTxns = useCallback(() => {
+    if (!user || !user.id) return;
     storageClearTxns(user.id);
     setTransactions([]);
     addToast('All transaction records have been cleared.', 'info');
-  };
+  }, [user, addToast]);
 
   // Budget CRUD handlers
-  const saveBudgetItem = (data) => {
-    if (!user) return;
+  const saveBudgetItem = useCallback((data) => {
+    if (!user || !user.id) return null;
     const saved = storageUpsertBudget(user.id, data);
     setBudgets((prev) => {
       const idx = prev.findIndex((b) => b.month === data.month && b.category === data.category);
@@ -125,34 +131,36 @@ export const FinanceProvider = ({ children }) => {
     });
     addToast('Monthly budget saved successfully!', 'success');
     return saved;
-  };
+  }, [user, addToast]);
 
-  const removeBudgetItem = (budgetId) => {
-    if (!user) return;
+  const removeBudgetItem = useCallback((budgetId) => {
+    if (!user || !user.id) return;
     storageDeleteBudget(user.id, budgetId);
     setBudgets((prev) => prev.filter((b) => b.id !== budgetId));
     addToast('Budget entry removed.', 'info');
-  };
+  }, [user, addToast]);
 
   // Settings handlers
-  const updateCurrency = (code) => {
-    if (!user) return;
+  const updateCurrency = useCallback((code) => {
+    if (!user || !user.id) return;
     const updated = saveUserSettings(user.id, { currency: code });
     setSettings(updated);
     addToast(`Currency preference set to ${code}.`, 'info');
-  };
+  }, [user, addToast]);
 
-  const updateTheme = (newTheme) => {
-    if (!user) return;
+  const updateTheme = useCallback((newTheme) => {
+    if (!user || !user.id) return;
     const updated = saveUserSettings(user.id, { theme: newTheme });
     setSettings(updated);
-    document.documentElement.setAttribute('data-theme', newTheme);
-  };
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-theme', newTheme);
+    }
+  }, [user]);
 
   // Detailed helper for monthly summary calculations
   const getMonthlySummary = useCallback(
     (monthStr = getCurrentMonthString()) => {
-      const monthTxns = transactions.filter((t) => (t.date || '').startsWith(monthStr));
+      const monthTxns = transactions.filter((t) => t && (t.date || '').startsWith(monthStr));
 
       const incomeTxns = monthTxns.filter((t) => t.type === 'income');
       const expenseTxns = monthTxns.filter((t) => t.type === 'expense');

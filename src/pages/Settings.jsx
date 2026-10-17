@@ -16,10 +16,11 @@ import {
   Key,
   CheckCircle2,
   AlertCircle,
+  LogOut,
 } from 'lucide-react';
 
 export const Settings = () => {
-  const { user, updateProfile, changePassword, deleteAccount } = useAuth();
+  const { user, updateProfile, changePassword, deleteAccount, logout } = useAuth();
   const {
     currency,
     updateCurrency,
@@ -108,6 +109,12 @@ export const Settings = () => {
     await deleteAccount();
     setIsDeleteAccountModalOpen(false);
     navigate('/signup');
+  };
+
+  // Handle Logout
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
   };
 
   return (
@@ -331,6 +338,48 @@ export const Settings = () => {
             </button>
           </div>
         </form>
+      </div>
+
+      {/* Session & Sign Out Card */}
+      <div className="card">
+        <div className="card-header">
+          <div>
+            <h3 className="card-title">
+              <LogOut size={18} style={{ color: 'var(--color-primary)' }} />
+              <span>Active Session</span>
+            </h3>
+            <p className="card-subtitle">Sign out of your account on this device</p>
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '14px',
+            borderRadius: 'var(--radius-md)',
+            background: 'var(--bg-surface-hover)',
+            gap: '12px',
+          }}
+        >
+          <div>
+            <div style={{ fontWeight: 600 }}>Currently Signed In</div>
+            <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+              Logged in as {user?.name} ({user?.email}). Logging out preserves all your saved transactions and budgets.
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="btn btn-secondary"
+            style={{ color: 'var(--color-expense)', borderColor: 'var(--color-expense-border)' }}
+          >
+            <LogOut size={15} />
+            <span>Sign Out</span>
+          </button>
+        </div>
       </div>
 
       {/* Danger Zone: Data Reset & Account Deletion */}

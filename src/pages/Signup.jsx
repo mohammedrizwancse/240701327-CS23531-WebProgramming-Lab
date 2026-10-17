@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useFinance } from '../context/FinanceContext';
 import { Wallet, Eye, EyeOff, UserPlus, AlertCircle } from 'lucide-react';
 
 export const Signup = () => {
   const { signup } = useAuth();
+  const { addToast } = useFinance();
   const navigate = useNavigate();
 
   const [name, setName] = useState('');
@@ -12,6 +14,7 @@ export const Signup = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [authError, setAuthError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,16 +22,18 @@ export const Signup = () => {
   const validate = () => {
     const errs = {};
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim();
 
-    if (!name.trim()) {
+    if (!trimmedName) {
       errs.name = 'Full name is required.';
-    } else if (name.trim().length < 2) {
+    } else if (trimmedName.length < 2) {
       errs.name = 'Name must be at least 2 characters long.';
     }
 
-    if (!email.trim()) {
+    if (!trimmedEmail) {
       errs.email = 'Email address is required.';
-    } else if (!emailRegex.test(email.trim())) {
+    } else if (!emailRegex.test(trimmedEmail)) {
       errs.email = 'Please enter a valid email address.';
     }
 
@@ -56,7 +61,12 @@ export const Signup = () => {
 
     setLoading(true);
     try {
-      await signup({ name, email, password });
+      const newUser = await signup({
+        name: name.trim(),
+        email: email.trim(),
+        password,
+      });
+      addToast(`Account created! Welcome, ${newUser.name}.`, 'success');
       navigate('/dashboard');
     } catch (err) {
       setAuthError(err.message || 'Registration failed. Please check your details.');
@@ -97,6 +107,7 @@ export const Signup = () => {
               onChange={(e) => {
                 setName(e.target.value);
                 if (errors.name) setErrors((prev) => ({ ...prev, name: null }));
+                if (authError) setAuthError('');
               }}
               autoComplete="name"
             />
@@ -116,6 +127,7 @@ export const Signup = () => {
               onChange={(e) => {
                 setEmail(e.target.value);
                 if (errors.email) setErrors((prev) => ({ ...prev, email: null }));
+                if (authError) setAuthError('');
               }}
               autoComplete="email"
             />
@@ -136,6 +148,7 @@ export const Signup = () => {
                 onChange={(e) => {
                   setPassword(e.target.value);
                   if (errors.password) setErrors((prev) => ({ ...prev, password: null }));
+                  if (authError) setAuthError('');
                 }}
                 autoComplete="new-password"
               />
@@ -156,18 +169,30 @@ export const Signup = () => {
             <label className="form-label" htmlFor="signup-confirm-password">
               Confirm Password
             </label>
-            <input
-              id="signup-confirm-password"
-              type={showPassword ? 'text' : 'password'}
-              className={`form-input ${errors.confirmPassword ? 'error' : ''}`}
-              placeholder="Re-enter password"
-              value={confirmPassword}
-              onChange={(e) => {
-                setConfirmPassword(e.target.value);
-                if (errors.confirmPassword) setErrors((prev) => ({ ...prev, confirmPassword: null }));
-              }}
-              autoComplete="new-password"
-            />
+            <div className="password-input-wrapper">
+              <input
+                id="signup-confirm-password"
+                type={showConfirmPassword ? 'text' : 'password'}
+                className={`form-input ${errors.confirmPassword ? 'error' : ''}`}
+                placeholder="Re-enter password"
+                value={confirmPassword}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  if (errors.confirmPassword) setErrors((prev) => ({ ...prev, confirmPassword: null }));
+                  if (authError) setAuthError('');
+                }}
+                autoComplete="new-password"
+              />
+              <button
+                type="button"
+                className="password-toggle-btn"
+                onClick={() => setShowConfirmPassword((prev) => !prev)}
+                title={showConfirmPassword ? 'Hide password' : 'Show password'}
+                aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+              >
+                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
             {errors.confirmPassword && (
               <span className="form-error-msg">{errors.confirmPassword}</span>
             )}

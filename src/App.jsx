@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { FinanceProvider } from './context/FinanceContext';
 import { MainLayout } from './layouts/MainLayout';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Pages
 import { Login } from './pages/Login';
@@ -26,8 +27,8 @@ const ProtectedRoute = ({ children }) => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: 'var(--bg-main)',
-          color: 'var(--text-secondary)',
+          background: 'var(--bg-main, #f8fafc)',
+          color: 'var(--text-secondary, #64748b)',
           fontSize: '1rem',
           fontWeight: 600,
         }}
@@ -48,7 +49,24 @@ const ProtectedRoute = ({ children }) => {
 const PublicAuthRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'var(--bg-main, #f8fafc)',
+          color: 'var(--text-secondary, #64748b)',
+          fontSize: '1rem',
+          fontWeight: 600,
+        }}
+      >
+        Loading DailySpend...
+      </div>
+    );
+  }
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
@@ -59,52 +77,54 @@ const PublicAuthRoute = ({ children }) => {
 
 export const App = () => {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <FinanceProvider>
-          <Routes>
-            {/* Public Authentication Routes */}
-            <Route
-              path="/login"
-              element={
-                <PublicAuthRoute>
-                  <Login />
-                </PublicAuthRoute>
-              }
-            />
-            <Route
-              path="/signup"
-              element={
-                <PublicAuthRoute>
-                  <Signup />
-                </PublicAuthRoute>
-              }
-            />
+    <ErrorBoundary>
+      <BrowserRouter>
+        <AuthProvider>
+          <FinanceProvider>
+            <Routes>
+              {/* Public Authentication Routes */}
+              <Route
+                path="/login"
+                element={
+                  <PublicAuthRoute>
+                    <Login />
+                  </PublicAuthRoute>
+                }
+              />
+              <Route
+                path="/signup"
+                element={
+                  <PublicAuthRoute>
+                    <Signup />
+                  </PublicAuthRoute>
+                }
+              />
 
-            {/* Protected Application Routes */}
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <MainLayout />
-                </ProtectedRoute>
-              }
-            >
-              <Route index element={<Navigate to="/dashboard" replace />} />
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="add-transaction" element={<AddTransaction />} />
-              <Route path="transactions" element={<TransactionHistory />} />
-              <Route path="budgets" element={<Budget />} />
-              <Route path="reports" element={<Reports />} />
-              <Route path="settings" element={<Settings />} />
-            </Route>
+              {/* Protected Application Routes */}
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <MainLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route index element={<Navigate to="/dashboard" replace />} />
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="add-transaction" element={<AddTransaction />} />
+                <Route path="transactions" element={<TransactionHistory />} />
+                <Route path="budgets" element={<Budget />} />
+                <Route path="reports" element={<Reports />} />
+                <Route path="settings" element={<Settings />} />
+              </Route>
 
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </FinanceProvider>
-      </AuthProvider>
-    </BrowserRouter>
+              {/* Fallback */}
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+          </FinanceProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 };
 

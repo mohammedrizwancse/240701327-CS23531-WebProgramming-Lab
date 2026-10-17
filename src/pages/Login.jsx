@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useFinance } from '../context/FinanceContext';
 import { Wallet, Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react';
 
 export const Login = () => {
   const { login } = useAuth();
+  const { addToast } = useFinance();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
@@ -17,10 +19,11 @@ export const Login = () => {
   const validate = () => {
     const errs = {};
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const trimmedEmail = email.trim();
 
-    if (!email.trim()) {
+    if (!trimmedEmail) {
       errs.email = 'Email address is required.';
-    } else if (!emailRegex.test(email.trim())) {
+    } else if (!emailRegex.test(trimmedEmail)) {
       errs.email = 'Please enter a valid email address.';
     }
 
@@ -40,7 +43,8 @@ export const Login = () => {
 
     setLoading(true);
     try {
-      await login(email, password);
+      const authenticatedUser = await login(email.trim(), password);
+      addToast(`Welcome back, ${authenticatedUser.name}!`, 'success');
       navigate('/dashboard');
     } catch (err) {
       setAuthError(err.message || 'Login failed. Please check your credentials.');
@@ -81,6 +85,7 @@ export const Login = () => {
               onChange={(e) => {
                 setEmail(e.target.value);
                 if (errors.email) setErrors((prev) => ({ ...prev, email: null }));
+                if (authError) setAuthError('');
               }}
               autoComplete="email"
             />
@@ -101,6 +106,7 @@ export const Login = () => {
                 onChange={(e) => {
                   setPassword(e.target.value);
                   if (errors.password) setErrors((prev) => ({ ...prev, password: null }));
+                  if (authError) setAuthError('');
                 }}
                 autoComplete="current-password"
               />
